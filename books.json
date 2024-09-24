@@ -1,1 +1,1 @@
-[{"title":"book1","author":"author1","year":2000,"genre":"error","isbn":"123456","isLent":false,"lentTo":null,"dueDate":null}]
+[{"title":"api","author":"alex","year":2000,"genre":"it","isbn":"1234","isLent":false,"lentTo":null,"dueDate":null}]

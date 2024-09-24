@@ -8,55 +8,68 @@ import 'library.dart';
 
 class DataPersistence {
   final LibraryManager libraryManager;
-  final String baseUrl = 'https://crudcrud.com/api/335b67fe07234cf984c2abeda444b271';
+  final String baseUrl = 'https://crudcrud.com/api/02f5b00f816b4addb74011313095a48a';
 
   DataPersistence(this.libraryManager);
 
-  Future<void> saveData() async {
-    try {
-      var booksJson = jsonEncode(libraryManager.books);
-      var authorsJson = jsonEncode(libraryManager.authors);
-      var membersJson = jsonEncode(libraryManager.members);
+   Future<void> saveData() async {
+  try {
+    // .....................................Save books.................//
 
-      // Save Books
-      var booksResponse = await http.post(
+    
+    for (var book in libraryManager.books) {
+      var bookJson = jsonEncode(book);
+      var bookResponse = await http.post(
         Uri.parse('$baseUrl/books'),
         headers: {'Content-Type': 'application/json'},
-        body: booksJson,
+        body: bookJson,
       );
-      if (booksResponse.statusCode != 201) {
-        print('Failed to save books: ${booksResponse.body}');
+      if (bookResponse.statusCode != 201) {
+        print('Failed to save book: ${bookResponse.body}');
       }
+    }
 
-      // Save Authors
-      var authorsResponse = await http.post(
+    //.................................... Save authors...................//
+
+
+    for (var author in libraryManager.authors) {
+      var authorJson = jsonEncode(author);
+      var authorResponse = await http.post(
         Uri.parse('$baseUrl/authors'),
         headers: {'Content-Type': 'application/json'},
-        body: authorsJson,
+        body: authorJson,
       );
-      if (authorsResponse.statusCode != 201) {
-        print('Failed to save authors: ${authorsResponse.body}');
+      if (authorResponse.statusCode != 201) {
+        print('Failed to save author: ${authorResponse.body}');
       }
+    }
 
-      // Save Members
-      var membersResponse = await http.post(
+    // .......................................Save members.................//
+
+
+    for (var member in libraryManager.members) {
+      var memberJson = jsonEncode(member);
+      var memberResponse = await http.post(
         Uri.parse('$baseUrl/members'),
         headers: {'Content-Type': 'application/json'},
-        body: membersJson,
+        body: memberJson,
       );
-      if (membersResponse.statusCode != 201) {
-        print('Failed to save members: ${membersResponse.body}');
+      if (memberResponse.statusCode != 201) {
+        print('Failed to save member: ${memberResponse.body}');
       }
-
-      print('Data saved successfully.');
-    } catch (e) {
-      print('Error saving data: $e');
     }
+
+    print('Data saved successfully.');
+  } catch (e) {
+    print('Error saving data: $e');
   }
+}
 
   Future<void> loadData() async {
     try {
-      // Load Books
+      //............................... Load Books..................................//
+
+
       var booksResponse = await http.get(Uri.parse('$baseUrl/books'));
       if (booksResponse.statusCode == 200) {
         var bookList = jsonDecode(booksResponse.body) as List;
@@ -66,7 +79,9 @@ class DataPersistence {
         print('Error loading books: ${booksResponse.body}');
       }
 
-      // Load Authors
+      // ............................Load Authors........................................//
+
+
       var authorsResponse = await http.get(Uri.parse('$baseUrl/authors'));
       if (authorsResponse.statusCode == 200) {
         var authorList = jsonDecode(authorsResponse.body) as List;
@@ -76,7 +91,9 @@ class DataPersistence {
         print('Error loading authors: ${authorsResponse.body}');
       }
 
-      // Load Members
+      // ..............................Load Members.....................................//
+
+
       var membersResponse = await http.get(Uri.parse('$baseUrl/members'));
       if (membersResponse.statusCode == 200) {
         var memberList = jsonDecode(membersResponse.body) as List;
