@@ -9,14 +9,17 @@ import 'library.dart';
 class DataPersistence {
   final LibraryManager libraryManager;
   final String baseUrl = 'https://crudcrud.com/api/02f5b00f816b4addb74011313095a48a';
-
   DataPersistence(this.libraryManager);
+
+
+// .....................................................SAVE DATA.............................................................//
+
 
    Future<void> saveData() async {
   try {
     // .....................................Save books.................//
 
-    
+
     for (var book in libraryManager.books) {
       var bookJson = jsonEncode(book);
       var bookResponse = await http.post(
@@ -64,6 +67,10 @@ class DataPersistence {
     print('Error saving data: $e');
   }
 }
+
+
+// ................................................LOAD DATA................................................................................//
+
 
   Future<void> loadData() async {
     try {

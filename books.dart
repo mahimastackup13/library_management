@@ -58,7 +58,7 @@ class Book {
       );
     } catch (e) {
       print('Error parsing book: $e. Data: $bookData');
-      throw e; // Propagate the error for handling in loadData
+      throw e; 
     }
   }
 

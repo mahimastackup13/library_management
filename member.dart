@@ -34,31 +34,15 @@ class Member {
       };
 
   
-  // static Member fromJson(Map<String, dynamic> json) {
-  //   final memberId = json['memberId'];
-  
-  //   if (_usedMemberIds.contains(memberId)) {
-  //     throw ArgumentError('Member ID must be unique. The provided member ID is already used.');
-  //   }
-
-    
-  //   final member = Member(
-  //     name: json['name'],
-  //     memberId: memberId,
-  //     borrowedBooks: List<String>.from(json['borrowedBooks']),
-  //   );
-
-    
-  //   _addMemberId(memberId);
-  //   return member;
-  // }
     static Member fromJson(Map<String, dynamic> json) {
     return Member(
       name: json['name'],
       memberId: json['memberId'],
       borrowedBooks: List<String>.from(json['borrowedBooks']),
-    );
+    ); 
+
   }
+  
   @override
   String toString() {
     return 'Name: $name, ID: $memberId, Borrowed Books: ${borrowedBooks.join(', ')}';

@@ -297,7 +297,7 @@ Future<void> LoadData() async {
     try {
       final name = _getValidInput('Enter member name: ');
       final memberId = _getValidInput('Enter member ID: ');
-      stdout.write('Enter borrowed books : ');
+      stdout.write('Enter borrowed books( leave empty if not borrowed) : ');
       final borrowedBooks =
           stdin.readLineSync()!.split(',').map((b) => b.trim()).toList();
 
