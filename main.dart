@@ -1,15 +1,12 @@
-
 import 'library.dart';
 import 'dart:io';
 // import 'dart:convert';
-// import 'datapersistence.dart';
 import 'library_api.dart';
 
 void main() async {
-  final libraryManager = LibraryManager();
-  // await libraryManager.loadData();
-  final dataPersistence=DataPersistence(libraryManager);
-  await dataPersistence.loadData();
+  final dataPersistence = DataPersistence();
+  final libraryManager = LibraryManager(dataPersistence);
+  await libraryManager.loadBooks();
 
   while (true) {
     print('Library Management System');
@@ -52,22 +49,19 @@ void main() async {
         await libraryManager.deleteBook(isbn);
         break;
       case '5':
-        stdout.write('Enter search query:title/author/genre :-');
+        stdout.write('Enter search query (title/author/genre): ');
         final query = stdin.readLineSync()!;
+        // libraryManager.searchBooks(query);
         libraryManager.searchBooks(query);
         break;
-
       case '6':
         stdout.write('Enter ISBN of the book to lend: ');
-        final isbn = stdin.readLineSync()!;
         stdout.write('Enter member ID: ');
-        final memberId = stdin.readLineSync()!;
-        await libraryManager.lendBook(isbn, memberId);
+        await libraryManager;
         break;
       case '7':
         stdout.write('Enter ISBN of the book to return: ');
-        final isbn = stdin.readLineSync()!;
-        await libraryManager.returnBook(isbn);
+        // await libraryManager.returnBook(isbn);
         break;
       case '8':
         await libraryManager.addAuthor();
@@ -103,7 +97,6 @@ void main() async {
         break;
       case '16':
         print('Saving data...');
-        await dataPersistence.saveData();
         print('Data saved successfully.');
         break;
       case '17':
@@ -113,6 +106,6 @@ void main() async {
         print('Invalid option. Try again.');
     }
   }
-  
 }
+
 

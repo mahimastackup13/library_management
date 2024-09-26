@@ -1,5 +1,5 @@
-import 'dart:io';
-import 'dart:convert';
+import 'dart:io'; 
+import 'library_api.dart';
 import 'books.dart';
 import 'author.dart';
 import 'member.dart';
@@ -9,53 +9,13 @@ class LibraryManager {
   List<Author> authors = [];
   List<Member> members = [];
 
+  final DataPersistence dataPersistence; // Link the DataPersistence instance
 
-  Future<void> loadData() async {
-    try {
-      final booksFile = File('books.json');
-      if (await booksFile.exists()) {
-        final booksData = jsonDecode(await booksFile.readAsString());
-        books = (booksData as List)
-            .map((bookJson) => Book.fromJson(bookJson))
-            .toList();
-      }
+  LibraryManager(this.dataPersistence);
 
-      final authorsFile = File('authors.json');
-      if (await authorsFile.exists()) {
-        final authorsData = jsonDecode(await authorsFile.readAsString());
-        authors = (authorsData as List)
-            .map((authorJson) => Author.fromJson(authorJson))
-            .toList();
-      }
-
-      final membersFile = File('members.json');
-      if (await membersFile.exists()) {
-        final membersData = jsonDecode(await membersFile.readAsString());
-        members = (membersData as List)
-            .map((memberJson) => Member.fromJson(memberJson))
-            .toList();
-      }
-    } catch (e) {
-      print('Error loading data: $e');
-    }
-  }
-
-  Future<void> saveData() async {
-    try {
-      final booksFile = File('books.json');
-      await booksFile
-          .writeAsString(jsonEncode(books.map((b) => b.toJson()).toList()));
-
-      final authorsFile = File('authors.json');
-      await authorsFile
-          .writeAsString(jsonEncode(authors.map((a) => a.toJson()).toList()));
-
-      final membersFile = File('members.json');
-      await membersFile
-          .writeAsString(jsonEncode(members.map((m) => m.toJson()).toList()));
-    } catch (e) {
-      print('Error saving data: $e');
-    }
+  // Book Methods
+  Future<void> loadBooks() async {
+    books = await dataPersistence.getBooks(); // Fetch existing books from the API
   }
 
   Future<void> addBook() async {
@@ -66,9 +26,16 @@ class LibraryManager {
       final genre = _getValidInput('Enter genre: ');
       final isbn = _getValidInput('Enter ISBN: ');
 
-      books.add(Book(
-          title: title, author: author, year: year, genre: genre, isbn: isbn));
-      await saveData();
+      final newBook = Book(
+        title: title,
+        author: author,
+        year: year,
+        genre: genre,
+        isbn: isbn,
+      );
+
+      books.add(newBook);
+      await dataPersistence.saveBook(newBook); // Save book using the API
       print('Book added successfully.');
     } catch (e) {
       print('Error adding book: $e');
@@ -93,19 +60,17 @@ class LibraryManager {
       final title = stdin.readLineSync();
       stdout.write('Enter new author (leave empty to keep unchanged): ');
       final author = stdin.readLineSync();
-      stdout.write(
-          'Enter new publication year (leave empty to keep unchanged): ');
+      stdout.write('Enter new publication year (leave empty to keep unchanged): ');
       final yearInput = stdin.readLineSync();
       stdout.write('Enter new genre (leave empty to keep unchanged): ');
       final genre = stdin.readLineSync();
 
       if (title != null && title.isNotEmpty) book.title = title;
       if (author != null && author.isNotEmpty) book.author = author;
-      if (yearInput != null && yearInput.isNotEmpty)
-        book.year = int.parse(yearInput);
+      if (yearInput != null && yearInput.isNotEmpty) book.year = int.parse(yearInput);
       if (genre != null && genre.isNotEmpty) book.genre = genre;
 
-      await saveData();
+      await dataPersistence.updateBook(isbn, book); // Update the book via API
       print('Book updated.');
     } catch (e) {
       print('Error updating book: $e');
@@ -115,21 +80,18 @@ class LibraryManager {
   Future<void> deleteBook(String isbn) async {
     try {
       books.removeWhere((b) => b.isbn == isbn);
-      await saveData();
+      await dataPersistence.deleteBook(isbn); // Delete book via API
       print('Book deleted.');
     } catch (e) {
       print('Error deleting book: $e');
     }
   }
 
-  void searchBooks(String query)  {
-   
-    
+  void searchBooks(String query) {
     final results = books.where((book) =>
         book.title.toLowerCase().contains(query.toLowerCase()) ||
         book.author.toLowerCase().contains(query.toLowerCase()) ||
         book.genre.toLowerCase().contains(query.toLowerCase()));
-        
 
     if (results.isEmpty) {
       print('No books found.');
@@ -140,113 +102,46 @@ class LibraryManager {
     }
   }
 
-  Future<void> lendBook(String isbn, String memberId) async {
-    try {
-      final book = books.firstWhere((b) => b.isbn == isbn,
-          orElse: () => throw Exception('Book not found.'));
-      if (book.isLent) {
-        print('Book is already lent.');
-        return;
-      }
-
-      final member = members.firstWhere((m) => m.memberId == memberId,
-          orElse: () => throw Exception('Member not found.'));
-      stdout.write('Enter due date (YYYY-MM-DD): ');
-      final dueDate = DateTime.parse(stdin.readLineSync()!);
-
-      book.isLent = true;
-      book.lentTo = memberId;
-      book.dueDate = dueDate;
-      member.borrowedBooks.add(book.isbn);
-
-      await saveData();
-      print(
-          'Book lent to ${member.name}, due on ${dueDate.toIso8601String()}.');
-    } catch (e) {
-      print('Error lending book: $e');
-    }
-  }
-
-  Future<void> returnBook(String isbn) async {
-    try {
-      final book = books.firstWhere((b) => b.isbn == isbn,
-          orElse: () => throw Exception('Book not found.'));
-      if (!book.isLent) {
-        print('Book is not currently lent.');
-        return;
-      }
-
-      final member = members.firstWhere((m) => m.memberId == book.lentTo,
-          orElse: () => throw Exception('Member not found.'));
-
-      book.isLent = false;
-      book.lentTo = null;
-      book.dueDate = null;
-      member.borrowedBooks.remove(book.isbn);
-
-      await saveData();
-      print('Book returned.');
-    } catch (e) {
-      print('Error returning book: $e');
-    }
-  }
-  
-
+  // Author Methods
   Future<void> addAuthor() async {
     try {
       final name = _getValidInput('Enter author name: ');
       final dob = _getValidDateInput('Enter author date of birth (YYYY-MM-DD): ');
-      stdout.write('Enter books written by author : ');
-      final booksWritten =
-          stdin.readLineSync()!.split(',').map((b) => b.trim()).toList();
+      stdout.write('Enter books written by author (comma-separated): ');
+      final booksWritten = stdin.readLineSync()!.split(',').map((b) => b.trim()).toList();
 
-      // authors.add(Author(name: name, dob: dob, booksWritten: booksWritten));
       final newAuthor = Author(name: name, dob: dob, booksWritten: booksWritten);
 
-      if (authors.any((a) => a.id == newAuthor.id)) {
-      print('An author with the same name and DOB already exists.');
-      return;
-    }
+      if (authors.any((a) => a.name == newAuthor.name && a.dob == newAuthor.dob)) {
+        print('An author with the same name and DOB already exists.');
+        return;
+      }
       authors.add(newAuthor);
-      await saveData();
+      await dataPersistence.saveAuthor(newAuthor); // Save author via API
       print('Author added successfully.');
     } catch (e) {
       print('Error adding author: $e');
     }
   }
-  
-
-
-  void viewAuthors() {
-    if (authors.isEmpty) {
-      print('No authors available.');
-    } else {
-      for (var author in authors) {
-        print(author);
-      }
-    }
-  }
 
   Future<void> updateAuthor(String name) async {
     try {
-      final author =  authors.firstWhere((a) => a.name == name,
+      final author = authors.firstWhere((a) => a.name == name,
           orElse: () => throw Exception('Author not found.'));
       stdout.write('Enter new name (leave empty to keep unchanged): ');
       final newName = stdin.readLineSync();
       stdout.write('Enter new date of birth (leave empty to keep unchanged): ');
       final dobInput = stdin.readLineSync();
-      stdout.write(
-          'Enter new books written ( leave empty to keep unchanged): ');
+      stdout.write('Enter new books written (leave empty to keep unchanged): ');
       final booksInput = stdin.readLineSync();
 
       if (newName != null && newName.isNotEmpty) author.name = newName;
-      if (dobInput != null && dobInput.isNotEmpty)
-        author.dob = DateTime.parse(dobInput);
-      if (booksInput != null && booksInput.isNotEmpty)
-        author.booksWritten =
-            booksInput.split(',').map((b) => b.trim()).toList();
+      if (dobInput != null && dobInput.isNotEmpty) author.dob = DateTime.parse(dobInput);
+      if (booksInput != null && booksInput.isNotEmpty) {
+        author.booksWritten = booksInput.split(',').map((b) => b.trim()).toList();
+      }
 
-      await saveData();
+      await dataPersistence.updateAuthor(author.id, author); 
       print('Author updated.');
     } catch (e) {
       print('Error updating author: $e');
@@ -256,67 +151,26 @@ class LibraryManager {
   Future<void> deleteAuthor(String name) async {
     try {
       authors.removeWhere((a) => a.name == name);
-      await saveData();
+      await dataPersistence.deleteAuthor(name); 
       print('Author deleted.');
     } catch (e) {
       print('Error deleting author: $e');
     }
   }
-  
-Future<void> SaveData() async {
-  try {
-    final file = File('authors.json');
-    final json = jsonEncode(authors.map((author) => author.toJson()).toList());
-    await file.writeAsString(json);
-    print('Data saved successfully.');
-  } catch (e) {
-    print('Error saving data: $e');
-  }
-}
 
-
-Future<void> LoadData() async {
-  try {
-    final file = File('authors.json');
-    if (await file.exists()) {
-      final json = await file.readAsString();
-      final data = jsonDecode(json) as List;
-      authors = data.map((item) => Author.fromJson(item)).toList();
-      print('Data loaded successfully.');
-    } else {
-      print('No data file found. Starting with an empty list.');
-    }
-  } catch (e) {
-    print('Error loading data: $e');
-  }
-}
-
-
-
+  // Member Methods
   Future<void> addMember() async {
     try {
       final name = _getValidInput('Enter member name: ');
-      final memberId = _getValidInput('Enter member ID: ');
-      stdout.write('Enter borrowed books( leave empty if not borrowed) : ');
-      final borrowedBooks =
-          stdin.readLineSync()!.split(',').map((b) => b.trim()).toList();
+      final membershipId = _getValidInput('Enter membership ID: ');
+      _getValidDateInput('Enter membership start date (YYYY-MM-DD): ');
 
-      members.add(
-          Member(name: name, memberId: memberId, borrowedBooks: borrowedBooks));
-      await saveData();
+      final newMember = Member(name: name, memberId: membershipId, borrowedBooks: []);
+      members.add(newMember);
+      await dataPersistence.saveMember(newMember); // Save member via API
       print('Member added successfully.');
     } catch (e) {
       print('Error adding member: $e');
-    }
-  }
-
-  void viewMembers() {
-    if (members.isEmpty) {
-      print('No members available.');
-    } else {
-      for (var member in members) {
-        print(member);
-      }
     }
   }
 
@@ -326,17 +180,14 @@ Future<void> LoadData() async {
           orElse: () => throw Exception('Member not found.'));
       stdout.write('Enter new name (leave empty to keep unchanged): ');
       final name = stdin.readLineSync();
-      stdout.write(
-          'Enter new borrowed books ( leave empty to keep unchanged): ');
-      final booksInput = stdin.readLineSync();
-      
+      stdout.write('Enter new membership start date (leave empty to keep unchanged): ');
+      final sinceInput = stdin.readLineSync();
 
       if (name != null && name.isNotEmpty) member.name = name;
-      if (booksInput != null && booksInput.isNotEmpty)
-        member.borrowedBooks =
-            booksInput.split(',').map((b) => b.trim()).toList();
+      if (sinceInput != null && sinceInput.isNotEmpty) 
+        member.borrowedBooks = DateTime.parse(sinceInput) as List<String>;
 
-      await saveData();
+      await dataPersistence.updateMember(member.memberId, member); 
       print('Member updated.');
     } catch (e) {
       print('Error updating member: $e');
@@ -346,13 +197,14 @@ Future<void> LoadData() async {
   Future<void> deleteMember(String memberId) async {
     try {
       members.removeWhere((m) => m.memberId == memberId);
-      await saveData();
+      await dataPersistence.deleteMember(memberId); 
       print('Member deleted.');
     } catch (e) {
       print('Error deleting member: $e');
     }
   }
 
+  // Helper methods to get valid inputs
   String _getValidInput(String prompt) {
     while (true) {
       stdout.write(prompt);
@@ -363,60 +215,68 @@ Future<void> LoadData() async {
       print('Invalid input. Please try again.');
     }
   }
-  Future<void> dataSave() async {
-  try {
-    final file = File('members.json');
-    final json = jsonEncode(members.map((member) => member.toJson()).toList());
-    await file.writeAsString(json);
-    print('Data saved successfully.');
-  } catch (e) {
-    print('Error saving data: $e');
-  }
-}
 
-
-Future<void> dataLoad() async {
-  try {
-    final file = File('members.json');
-    if (await file.exists()) {
-      final json = await file.readAsString();
-      final data = jsonDecode(json) as List;
-      members = data.map((item) => Member.fromJson(item)).toList();
-      print('Data loaded successfully.');
-    } else {
-      print('No data file found. Starting with an empty list.');
+  DateTime _getValidDateInput(String prompt) {
+    while (true) {
+      stdout.write(prompt);
+      final input = stdin.readLineSync();
+      if (input != null && input.isNotEmpty) {
+        try {
+          return DateTime.parse(input);
+        } catch (e) {
+          print('Invalid date format. Please use YYYY-MM-DD.');
+        }
+      } else {
+        print('Input cannot be empty. Please try again.');
+      }
     }
-  } catch (e) {
-    print('Error loading data: $e');
   }
-}
-
 
   int _getValidIntInput(String prompt) {
     while (true) {
       stdout.write(prompt);
       final input = stdin.readLineSync();
-      try {
-        return int.parse(input!);
-      } catch (_) {
-        print('Invalid number. Please enter a valid integer.');
+      if (input != null && input.isNotEmpty) {
+        try {
+          final intInput = int.parse(input);
+          if (intInput >= 1000 && intInput <= 9999) {
+            return intInput;
+          } else {
+            print('Invalid input. Please enter a 4-digit number.');
+          }
+        } catch (e) {
+          print('Invalid input. Please enter a valid number.');
+        }
+      } else {
+        print('Input cannot be empty. Please try again.');
+      }
+    }
+  }
+ void returnBook(String isbn) {
+    final book = books.firstWhere((b) => b.isbn == isbn, orElse: () => throw Exception('Book not found.'));
+    
+    print('Book returned successfully: ${book.title}');
+  }
+
+  
+  void viewAuthors() {
+    if (authors.isEmpty) {
+      print('No authors available.');
+    } else {
+      for (var author in authors) {
+        print(author);
       }
     }
   }
 
-DateTime _getValidDateInput(String prompt) {
-  while (true) {
-    stdout.write(prompt);
-    final input = stdin.readLineSync();
-    try {
-      if (input != null && input.trim().isNotEmpty) {
-        return DateTime.parse(input);
-      } else {
-        print('Input cannot be empty. Please enter a date in YYYY-MM-DD format.');
+  
+  void viewMembers() {
+    if (members.isEmpty) {
+      print('No members available.');
+    } else {
+      for (var member in members) {
+        print(member);
       }
-    } catch (_) {
-      print('Invalid date. Please enter a valid date in YYYY-MM-DD format.');
     }
   }
-}
 }
